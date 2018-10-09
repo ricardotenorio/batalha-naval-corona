@@ -7,6 +7,8 @@
 -- Your code here
 
 math.randomseed( os.time())
+
+
 -------------------
 -- Variáveis
 -------------------
@@ -14,15 +16,17 @@ math.randomseed( os.time())
 local navio = {  }
 local tabuleiro = { }
 local jogador = { }
+-- fase 1 == posicionamento, 2 == batalha
+local fase = 1
 
-
+local tapListener
 
 ------------------- 
 -- Objetos
 -------------------
 
 -- Classe navio
---dano = 0, posicao = {}, tamanho = 0
+-- dano = 0, posicao = {}, tamanho = 0
 -- construtor para a criação de um novo objeto
 function navio:new()
 	local obj = {}
@@ -37,15 +41,15 @@ end
 
 
 -- Classe tabuleiro
--- navios = {}, graficoX = {}, graficoY = {}, retangulos = {}
+-- navios = {}, graficoLinha = {}, graficoColuna = {}, retangulos = {}
 -- construtor
 function tabuleiro:new ()
       obj = {}
       setmetatable(obj, self)
       self.__index = self
       obj.navios = {}
-      obj.graficoX = {}
-      obj.graficoY = {}
+      obj.graficoLinha = {}
+      obj.graficoColuna = {}
       obj.retangulos = {}
       return obj
 end
@@ -73,10 +77,10 @@ end
 function tabuleiro:desenharGrafico( )
 	
 	for i = 1, 9 do
-		self.graficoX[i] = display.newLine( 0, display.contentHeight * i *.10, 
+		self.graficoLinha[i] = display.newLine( 0, display.contentHeight * i *.10, 
 		display.contentWidth, display.contentHeight * i * .10 ) 
 
-		self.graficoY[i] = display.newLine( display.contentWidth * i * .10, 0, 
+		self.graficoColuna[i] = display.newLine( display.contentWidth * i * .10, 0, 
 		 display.contentWidth * i * .10, display.contentHeight) 
 	end
 
@@ -97,7 +101,7 @@ function tabuleiro:desenharRetangulos( )
 			self.retangulos[i][j].linha = i
 			self.retangulos[i][j].coluna = j
 			self.retangulos[i][j].ativo = true
-			--retangulos[i][j]:addEventListener ( "tap", tapListener )
+			self.retangulos[i][j]:addEventListener ( "tap", tapListener )
 		end
 
 	end
@@ -105,11 +109,43 @@ function tabuleiro:desenharRetangulos( )
 end
 
 
+
+-- atira na célula selecionada
+function jogador:atirar( jogador2, linha, coluna)
+	local acertou = false
+	local pontuacao = self.pontuacao
+
+	for i = 1, #jogador2.tabuleiro.navios do
+		-- checa se o valor x e y estão entre as posições x1, x2 e y1, y2, respectivamente 
+
+		if ( (linha >= jogador2.tabuleiro.navios[i].posicao[1] and linha <= jogador2.tabuleiro.navios[i].posicao[2])
+			and 
+			 (coluna >= jogador2.tabuleiro.navios[i].posicao[3] and coluna <= jogador2.tabuleiro.navios[i].posicao[4]) ) then
+			acertou = true
+			jogador2.tabuleiro.navios[i].dano = jogador2.tabuleiro.navios[i].dano + 1
+			
+			if ( jogador2.tabuleiro.navios[i].dano == jogador2.tabuleiro.navios[i].tamanho ) then
+				pontuacao = pontuacao + jogador2.tabuleiro.navios[i].tamanho * 10
+			end
+		end
+		
+	end
+
+	self.pontuacao = pontuacao
+
+	return acertou
+
+end
+
+
+
 --------------------
 -- Funções
 --------------------
 
-
+tapListener = function( event )
+	event.target.fill = { 1, 0, 0}
+end
 local t = tabuleiro:new()
 t:desenharGrafico()
 t:desenharRetangulos()
