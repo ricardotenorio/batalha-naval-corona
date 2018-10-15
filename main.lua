@@ -16,10 +16,12 @@ math.randomseed( os.time())
 -- altura e largura do tabuleiro
 local altura = display.contentHeight * .6
 local largura = display.contentWidth
+-- cores
 local navioCor = { .6, .4, .4 }
 local tiroCertoCor = { 0, .3, .1 }
 local tiroErradoCor = { .5, .1, .1 }
 local tabuleiroCor = { 0, .15, .60}
+local botaoCor = { 0, .30, .50}
 
 local navio = { }
 local tabuleiro = { }
@@ -31,12 +33,13 @@ local texto = { }
 local tamanhoNavio
 local posicaoNavio = { }
 
+-- Fases do jogo
+local novoJogo
+local batalha
+local reiniciar
 
--- fase 1 == posicionamento, 2 == batalha, 3 == reiniciar
-local fase
--- adicionar novo navio
--- local botaoNovoNavio = display.newImage( "image/not_a_very_good_image.png", display.contentWidth / 2, display.contentHeight * .9 )
 local iaPosicionarNavio
+local iaAtirar
 local posicionarNavioListener
 local orientacaoNavioListener
 local tapListener
@@ -44,9 +47,15 @@ local posicionarEvento
 local removerPosicionarEvento
 local orientacaoEvento
 local removerOrientacaoEvento
+local atirarListener
+local atirarEvento
+local botao
+local botaoListener
+local botaoTexto
 local definirTexto
 local textoTopo 
 local mudarCor
+local venceu
 
 ------------------- 
 -- Objetos
@@ -68,7 +77,7 @@ end
 
 
 -- Classe tabuleiro
--- navios = {}, graficoLinha = {}, graficoColuna = {}, retangulos = {}
+-- navios = {}, graficoLinha = {}, graficoColuna = {}, retangulos = {}, ativo = false
 -- construtor
 function tabuleiro:new ()
       obj = {}
@@ -78,6 +87,7 @@ function tabuleiro:new ()
       obj.graficoLinha = {}
       obj.graficoColuna = {}
       obj.retangulos = {}
+      obj.ativo = false
       return obj
 end
 
@@ -126,10 +136,22 @@ function tabuleiro:desenharRetangulos( )
 			self.retangulos[i][j].linha = i
 			self.retangulos[i][j].coluna = j
 			self.retangulos[i][j].ocupado = false
+			self.retangulos[i][j].atingido = false
 		end
 
 	end
 
+	self.ativo = true
+
+end
+
+-- Muda a cor de todas as células do tabuleiro
+function tabuleiro:mudarCorCelulas( )
+	for i=1,10 do
+		for j=1,10 do
+			mudarCor( self.retangulos[i][j], tabuleiroCor )
+		end
+	end
 end
 
 -- verifica se já existe um navio ocupando aquele espaço
@@ -146,6 +168,7 @@ function tabuleiro:esconder( )
 			self.retangulos[i][j].alpha = 0
 		end
 	end
+	self.ativo = false
 end
 
 -- Mostra o tabuleiro modificando o alpha dos retângulos
@@ -155,6 +178,8 @@ function tabuleiro:mostrar( )
 			self.retangulos[i][j].alpha = .5
 		end
 	end
+
+	self.ativo = true
 end
 
 -- Posiciona um novo navio no tabuleiro
@@ -214,9 +239,9 @@ function jogador:atirar( jogador2, linha, coluna)
 	for i = 1, #jogador2.tabuleiro.navios do
 		-- checa se o valor x e y estão entre as posições x1, x2 e y1, y2, respectivamente 
 
-		if ( (linha >= jogador2.tabuleiro.navios[i].posicao[1] and linha <= jogador2.tabuleiro.navios[i].posicao[2])
+		if ( (linha >= jogador2.tabuleiro.navios[i].posicao[1] and linha <= jogador2.tabuleiro.navios[i].posicao[3])
 			and 
-			 (coluna >= jogador2.tabuleiro.navios[i].posicao[3] and coluna <= jogador2.tabuleiro.navios[i].posicao[4]) ) then
+			 (coluna >= jogador2.tabuleiro.navios[i].posicao[2] and coluna <= jogador2.tabuleiro.navios[i].posicao[4]) ) then
 			acertou = true
 			jogador2.tabuleiro.navios[i].dano = jogador2.tabuleiro.navios[i].dano + 1
 			
@@ -226,6 +251,15 @@ function jogador:atirar( jogador2, linha, coluna)
 		end
 		
 	end
+
+	if ( acertou ) then
+		jogador2.tabuleiro.retangulos[linha][coluna].fill = tiroCertoCor
+	else
+		jogador2.tabuleiro.retangulos[linha][coluna].fill = tiroErradoCor
+	end
+
+	jogador2.tabuleiro.retangulos[linha][coluna]:removeEventListener( "tap", atirarListener )
+	jogador2.tabuleiro.retangulos[linha][coluna].atingido = true
 
 	self.pontuacao = pontuacao
 
@@ -275,11 +309,40 @@ orientacaoNavioListener = function ( event )
 		jogadorUm.tabuleiro:esconder()
 		ia.tabuleiro:desenharRetangulos()
 		iaPosicionarNavio()
+		ia.tabuleiro:mudarCorCelulas()
+		batalha()
 	else
 		tamanhoNavio = tamanhoNavio + 1
 	end
 end
 
+botaoListener = function ( )
+	if ( jogadorUm.tabuleiro.ativo ) then
+		jogadorUm.tabuleiro:escoder()
+		ia.tabuleiro:mostrar()
+		textoTopo( "Batalha - Atirar" )
+		botaoTexto.text = "Ver Tabuleiro"
+
+	else
+		ia.tabuleiro:esconder()
+		jogadorUm.tabuleiro:mostrar()
+		textoTopo( "Batalha" )
+		botaoTexto.text = "Ver Inimigo"
+	end
+end
+
+atirarListener = function ( event )
+	local linha = event.target.linha
+	local coluna = event.target.coluna
+	local acertou = jogadorUm:atirar( ia, linha, coluna )
+
+	if ( acertou and not venceu( jogadorUm ) ) then
+		textoFundo( "Acertou" )
+		definirTexto()
+	elseif ( not acertou ) then
+		iaAtirar()
+	end
+end
 
 --------------------
 -- Funções
@@ -299,6 +362,20 @@ novoJogo = function()
 	jogadorUm.tabuleiro:desenharGrafico()
 	jogadorUm.tabuleiro:desenharRetangulos()
 	posicionarEvento()
+
+end
+
+-- Fase de batalha
+batalha = function()
+	atirarListener()
+	ia.tabuleiro:esconder()
+	jogadorUm.tabuleiro:mostrar()
+	textoTopo( "Batalha" )
+	
+	botao = display.newRoundedRect( largura / 2, display.contentHeight - 30, 100, 20, 5 )
+	botao.fill = botaoCor
+	botaoTexto = display.newText( "Ver Inimigo", largura / 2, display.contentHeight - 30 )
+	botao:addEventListener( "tap", botaoListener )
 
 end
 
@@ -362,6 +439,21 @@ iaPosicionarNavio = function ( )
 	end
 end
 
+iaAtirar = function ( jogador1, jogador2 )
+	local posX
+	local posY
+
+	repeat 
+			posX = math.random( 2, 11 )
+			posY = math.random( 2, 11 )
+	until (not jogador2.tabuleiro.retangulos[posX][posY].atingido)
+
+	if ( jogador1:atirar( jogador2, posX, poxY ) and not venceu( jogador1 ) ) then
+		iaAtirar( jogador1, jogador2 )
+	end
+
+end
+
 
 -- Adiciona os listeners para o posicionamento dos navios
 posicionarEvento = function ( )	
@@ -375,7 +467,7 @@ posicionarEvento = function ( )
 	end
 end
 
--- Remove todos os event de posicionar do tabuleiro
+-- Remove todos os eventos de posicionar do tabuleiro
 removerPosicionarEvento = function ( )
 	for i=1, 10 do
 		for j=1, 10 do
@@ -476,6 +568,15 @@ removerOrientacaoEvento = function ( )
 	end
 end
 
+-- adiciona listener no tabuleiro do adversário
+atirarEvento = function ()
+	for i=1,10 do
+		for j=1,10 do
+			ai.tabuleiro.retangulos[i][j]:addEventListener( "tap", atirarListener )
+		end
+	end
+end
+
 -- Define o texto no topo da tela com o atual estado do jogo
 -- Verifica se já existe um texto definido(se a função já foi chamada) para evitar overlap dos textos
 definirTexto = function ( )
@@ -514,6 +615,7 @@ textoFundo = function ( str )
 		texto.fundo.text = str
 	end
 end
+
 
 -- Muda a cor de um retâgulo
 -- Recebe um retâgulo e a cor
