@@ -37,10 +37,12 @@ local fase
 -- local botaoNovoNavio = display.newImage( "image/not_a_very_good_image.png", display.contentWidth / 2, display.contentHeight * .9 )
 
 local posicionarNavioListener
+local orientacaoNavioListener
 local tapListener
 local definirTexto
 local textoTopo
 local posicionarEvento
+local orientacaoEvento
 local mudarCor
 
 ------------------- 
@@ -123,11 +125,19 @@ function tabuleiro:desenharRetangulos( )
 			self.retangulos[i][j].linha = i
 			self.retangulos[i][j].coluna = j
 			self.retangulos[i][j].ocupado = false
+			-- teste remover depois
 			self.retangulos[i][j]:addEventListener ( "tap", tapListener )
 		end
 
 	end
 
+end
+
+-- verifica se já existe um navio ocupando aquele espaço
+-- recebe como parâmetros dois valores com as posições a serem checadas
+-- retorna true se já estiver ocupado, senão retorna false
+function tabuleiro:celulaOcupada( linha, coluna )	
+	return self.retangulos[linha][coluna].ocupado
 end
 
 
@@ -138,17 +148,21 @@ function jogador:posicionarNavio( pos, tam )
 	novoNavio.tamanho = tam
 
 	table.insert( self.tabuleiro.navios, novoNavio )
-	tamanhoNavio = tamanhoNavio + 1
 
-	-- percorre o grafico no eixo x e define o valor como o tamanho do navio
-	-- ex. em um navio com tamanho 5 as posições entre x1 e x2 serão preenchidas com esse valor
+	-- percorre o grafico no eixo x muda a cor e remove o listener
 	for i = novoNavio.posicao[1], novoNavio.posicao[2] do
-		mudarCor ( self.tabuleiro.retangulos[novoNavio.posicao[3]][i], navioCor ) 
+		local retangulo = self.tabuleiro.retangulos[novoNavio.posicao[3]][i]
+		mudarCor ( retangulo, navioCor ) 
+		retangulo.ocupado = true
+		retangulo:removeEventListener( "tap", posicionarNavioListener )
 	end
 
-	-- percorre o grafico no eixo y e define o valor como o tamanho do navio
+	-- percorre o grafico no eixo y muda a cor e remove o listener
 	for i = novoNavio.posicao[3], novoNavio.posicao[4] do
-		mudarCor ( self.tabuleiro.retangulos[i][novoNavio.posicao[1]], navioCor )
+		local retangulo =  self.tabuleiro.retangulos[i][novoNavio.posicao[1]]
+		mudarCor ( retangulo, navioCor )
+		retangulo.ocupado = true
+		retangulo:removeEventListener( "tap", posicionarNavioListener )
 	end
 	
 end
@@ -195,11 +209,25 @@ posicionarNavioListener = function ( event )
 		posicaoNavio.c2 = event.target.coluna
 		jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
 		textoFundo( "Navio posicionado" )
+		tamanhoNavio = tamanhoNavio + 1
 	else	
-		textoTopo( "Defina a orientação do navio")
+		removerEventos()
+		if ( orientacaoEvento() ) then
+			textoFundo( "Navio não pode ser posicionado aqui" )
+			posicionarEvento()
+		end
+		
 	end
 end
 
+orientacaoNavioListener = function ( event )
+	textoFundo( "Defina a orientação")
+	posicaoNavio.l2 = event.target.linha
+	posicaoNavio.c2 = event.target.coluna
+	jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
+	textoFundo( "Navio posicionado" )
+	tamanhoNavio = tamanhoNavio + 1
+end
 
 
 --------------------
@@ -224,17 +252,103 @@ end
 
 
 -- Adiciona os listeners para o posicionamento dos navios
--- Recebe um jogador como parâmetro
-posicionarEvento = function ( jogador )	
-	for i=1,9 do
-		for j=1,9 do
-			if ( jogador.tabuleiro.retangulos[i][j].ocupado == false ) then
-				jogador.tabuleiro.retangulos[i][j]:addEventListener( "tap", posicionarNavioListener )
+posicionarEvento = function ( )	
+	for i=1, 10 do
+		for j=1, 10 do
+			if ( jogadorUm.tabuleiro.retangulos[i][j].ocupado == false ) then
+				jogadorUm.tabuleiro.retangulos[i][j]:addEventListener( "tap", posicionarNavioListener )
 			end
 		end
 	end
 end
 
+-- Remove todos os event listeners do tabuleiro
+removerEventos = function ( )
+	for i=1, 10 do
+		for j=1, 10 do
+			jogadorUm.tabuleiro.retangulos[i][j]:removeEventListener( "tap", posicionarNavioListener )
+		end
+	end
+end
+
+-- Modifica os listeners dos retângulos para aceitar apenas posições válidas
+-- Retorna true se nenhum navio puder ser posicionado
+orientacaoEvento = function ( )
+	local valido = true
+	local voltar = true
+	local linhaNeg = posicaoNavio.l1 - tamanhoNavio
+	local linhaPos = posicaoNavio.l1 + tamanhoNavio
+	local colunaNeg = posicaoNavio.c1 - tamanhoNavio
+	local colunaPos = posicaoNavio.c1 + tamanhoNavio
+
+	if ( linhaNeg > 0 ) then
+		for i = posicaoNavio.l1, linhaNeg, -1 do
+			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio.c1 ) ) then
+				valido = false
+				break
+			end
+		end
+
+		if ( valido ) then
+			jogadorUm.tabuleiro.retangulos[linhaNeg][posicaoNavio.c1]:addEventListener( "tap", orientacaoNavioListener )
+			voltar = false
+		end
+	end
+
+-----------------------------------------------------------------------------------------
+
+	if ( linhaPos < 11 ) then
+		valido = true
+		for i = posicaoNavio.l1, linhaPos do
+			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio.c1 ) ) then
+				valido = false
+				break
+			end
+		end
+
+		if ( valido ) then
+			jogadorUm.tabuleiro.retangulos[linhaPos][posicaoNavio.c1]:addEventListener( "tap", orientacaoNavioListener )
+			voltar = false
+		end
+	end
+
+-----------------------------------------------------------------------------------------
+
+	if ( colunaNeg > 0 ) then
+		valido = true
+		for i = posicaoNavio.c1, colunaNeg, -1 do
+			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio.l1, i ) ) then
+				valido = false
+				break
+			end
+		end
+
+		if ( valido ) then
+			jogadorUm.tabuleiro.retangulos[posicaoNavio.l1][colunaNeg]:addEventListener( "tap", orientacaoNavioListener )
+			voltar = false
+		end
+	end
+
+
+-----------------------------------------------------------------------------------------
+
+	if ( colunaPos < 11 ) then
+		valido = true
+		for i = posicaoNavio.c1, colunaPos do
+			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio.l1, i ) ) then
+				valido = false
+				break
+			end
+		end
+
+		if ( valido ) then
+			jogadorUm.tabuleiro.retangulos[posicaoNavio.l1][colunaNeg]:addEventListener( "tap", orientacaoNavioListener )
+			voltar = false
+		end
+	end
+
+	return voltar
+end
 
 -- Define o texto no topo da tela com o atual estado do jogo
 -- Verifica se já existe um texto definido(se a função já foi chamada) para evitar overlap dos textos
