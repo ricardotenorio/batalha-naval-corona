@@ -49,6 +49,7 @@ local orientacaoEvento
 local removerOrientacaoEvento
 local atirarListener
 local atirarEvento
+local removerAtirarEvento
 local botao
 local botaoListener
 local botaoTexto
@@ -199,12 +200,6 @@ function jogador:posicionarNavio( pos, tam )
 		aux = 1
 	end
 
-	for k, v in pairs(novoNavio.posicao) do
-		print(k, v)
-	end
-
-	print( tam )
-	print( "\n" )
 
 	-- percorre o grafico no eixo x muda a cor e remove o listener
 	for i = novoNavio.posicao[1], novoNavio.posicao[3], aux do
@@ -236,6 +231,8 @@ function jogador:atirar( jogador2, linha, coluna)
 	local acertou = false
 	local pontuacao = self.pontuacao
 
+	print( jogador2.tabuleiro.retangulos[linha][coluna] )
+
 	for i = 1, #jogador2.tabuleiro.navios do
 		-- checa se o valor x e y estão entre as posições x1, x2 e y1, y2, respectivamente 
 
@@ -251,6 +248,7 @@ function jogador:atirar( jogador2, linha, coluna)
 		end
 		
 	end
+
 
 	if ( acertou ) then
 		jogador2.tabuleiro.retangulos[linha][coluna].fill = tiroCertoCor
@@ -306,6 +304,7 @@ orientacaoNavioListener = function ( event )
 	removerOrientacaoEvento()
 	posicionarEvento()
 	if ( tamanhoNavio == 5 ) then
+		removerPosicionarEvento()
 		jogadorUm.tabuleiro:esconder()
 		ia.tabuleiro:desenharRetangulos()
 		iaPosicionarNavio()
@@ -318,7 +317,7 @@ end
 
 botaoListener = function ( )
 	if ( jogadorUm.tabuleiro.ativo ) then
-		jogadorUm.tabuleiro:escoder()
+		jogadorUm.tabuleiro:esconder()
 		ia.tabuleiro:mostrar()
 		textoTopo( "Batalha - Atirar" )
 		botaoTexto.text = "Ver Tabuleiro"
@@ -340,7 +339,9 @@ atirarListener = function ( event )
 		textoFundo( "Acertou" )
 		definirTexto()
 	elseif ( not acertou ) then
-		iaAtirar()
+		ia.tabuleiro:esconder()
+		jogadorUm.tabuleiro:mostrar()
+		iaAtirar( ia, jogadorUm )
 	end
 end
 
@@ -367,7 +368,7 @@ end
 
 -- Fase de batalha
 batalha = function()
-	atirarListener()
+	atirarEvento()
 	ia.tabuleiro:esconder()
 	jogadorUm.tabuleiro:mostrar()
 	textoTopo( "Batalha" )
@@ -399,13 +400,13 @@ iaPosicionarNavio = function ( )
 				local posY2
 
 				if ( orientacao == 1 ) then
-					posX1 = math.random( 2, 11 - i )
-					posY1 = math.random( 2, 11 )
+					posX1 = math.random( 1, 10 - i )
+					posY1 = math.random( 1, 10 )
 					posX2 = posX1 + i - 1
 					posY2 = posY1
 				else
-					posX1 = math.random( 2, 11 )
-					posY1 = math.random( 2, 11 - i )
+					posX1 = math.random( 1, 10 )
+					posY1 = math.random( 1, 10 - i )
 					posX2 = posX1
 					posY2 = posY1 + i - 1
 				end
@@ -427,8 +428,8 @@ iaPosicionarNavio = function ( )
 
 			end
 		else
-			local posX = math.random( 2, 11 )
-			local posY = math.random( 2, 11 )
+			local posX = math.random( 1, 10 )
+			local posY = math.random( 1, 10 )
 			table.insert( pos, posX)
 			table.insert( pos, posY)
 			table.insert( pos, posX)
@@ -444,11 +445,12 @@ iaAtirar = function ( jogador1, jogador2 )
 	local posY
 
 	repeat 
-			posX = math.random( 2, 11 )
-			posY = math.random( 2, 11 )
-	until (not jogador2.tabuleiro.retangulos[posX][posY].atingido)
+		posX = math.random( 1, 10 )
+		posY = math.random( 1, 10 )
+	until ( not jogador2.tabuleiro.retangulos[posX][posY].atingido )
 
 	if ( jogador1:atirar( jogador2, posX, poxY ) and not venceu( jogador1 ) ) then
+		definirTexto()
 		iaAtirar( jogador1, jogador2 )
 	end
 
@@ -572,7 +574,16 @@ end
 atirarEvento = function ()
 	for i=1,10 do
 		for j=1,10 do
-			ai.tabuleiro.retangulos[i][j]:addEventListener( "tap", atirarListener )
+			ia.tabuleiro.retangulos[i][j]:addEventListener( "tap", atirarListener )
+		end
+	end
+end
+
+-- remove os eventos de atirar
+removerAtirarEvento = function ()
+	for i=1,10 do
+		for j=1,10 do
+			ia.tabuleiro.retangulos[i][j]:removeEventListener( "tap", atirarListener )
 		end
 	end
 end
@@ -623,6 +634,22 @@ mudarCor = function ( retangulo, cor )
 	retangulo.fill = cor
 end
 
+-- verifica se um dos jogadores venceu o jogo
+venceu = function ( jogador )
+	if ( jogador.pontuacao == 150 ) then
+		removerAtirarEvento()
+
+		if ( jogador.ia ) then
+			textoTopo( "Você perdeu" )	
+		else
+			textoTopo( "Você venceu" )
+		end
+
+		return true
+	else
+		return false
+	end
+end
 
 --------------------
 -- Jogo
