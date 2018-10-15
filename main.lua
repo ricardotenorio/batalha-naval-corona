@@ -339,6 +339,7 @@ atirarListener = function ( event )
 		textoFundo( "Acertou" )
 		definirTexto()
 	elseif ( not acertou ) then
+		textoFundo( "Errou" )
 		ia.tabuleiro:esconder()
 		jogadorUm.tabuleiro:mostrar()
 		iaAtirar( ia, jogadorUm )
