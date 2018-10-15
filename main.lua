@@ -13,13 +13,26 @@ math.randomseed( os.time())
 -- Variáveis
 -------------------
 
-local navio = {  }
+-- altura e largura do tabuleiro
+local altura = display.contentHeight * .6
+local largura = display.contentWidth
+
+local navio = { }
 local tabuleiro = { }
 local jogador = { }
--- fase 1 == posicionamento, 2 == batalha
-local fase = 1
+
+local jogadorUm
+local jogadorDois
+local texto = { }
+
+-- fase 1 == posicionamento, 2 == batalha, 3 == reiniciar
+local fase
+-- adicionar novo navio
+-- local botaoNovoNavio = display.newImage( "image/not_a_very_good_image.png", display.contentWidth / 2, display.contentHeight * .9 )
 
 local tapListener
+local definirTexto
+local textoAcao
 
 ------------------- 
 -- Objetos
@@ -77,11 +90,11 @@ end
 function tabuleiro:desenharGrafico( )
 	
 	for i = 1, 9 do
-		self.graficoLinha[i] = display.newLine( 0, display.contentHeight * i *.10, 
-		display.contentWidth, display.contentHeight * i * .10 ) 
+		self.graficoLinha[i] = display.newLine( 0, altura * i *.10 + 100, 
+		largura, altura * i * .10 + 100 ) 
 
-		self.graficoColuna[i] = display.newLine( display.contentWidth * i * .10, 0, 
-		 display.contentWidth * i * .10, display.contentHeight) 
+		self.graficoColuna[i] = display.newLine( largura * i * .10, 100, 
+		 largura * i * .10, altura + 100) 
 	end
 
 end
@@ -94,8 +107,8 @@ function tabuleiro:desenharRetangulos( )
 		
 		self.retangulos[i] = {}
 		for j=1, 10 do
-			self.retangulos[i][j] = display.newRect( ( display.contentWidth / 20 * ( i + i - 1) ) , (  display.contentHeight / 20 * ( j + j - 1) ) , 
-				display.contentWidth / 10, display.contentHeight / 10 )
+			self.retangulos[i][j] = display.newRect( ( largura / 20 * ( i + i - 1) ) , (  altura / 20 * ( j + j - 1) + 100) , 
+				largura / 10, altura / 10 )
 			self.retangulos[i][j].fill = paint
 			self.retangulos[i][j].alpha = .5
 			self.retangulos[i][j].linha = i
@@ -140,12 +153,74 @@ end
 
 
 --------------------
+-- Event Listeners
+--------------------
+
+
+
+
+--------------------
 -- Funções
 --------------------
 
-tapListener = function( event )
-	event.target.fill = { 1, 0, 0}
+-- Define o estado de um novo jogo
+novoJogo = function()
+	jogadorUm = jogador:new( )
+	jogadorDois = jogador:new( )
+	jogadorDois.ia = true
+	fase = 1
+
+	definirTexto( )
+	jogadorUm.pontuacao = 1000
+	definirTexto()
+
 end
+
+-- Define o texto no topo da tela com o atual estado do jogo
+-- Verifica se já existe um texto definido(se a função já foi chamada) para evitar overlap dos textos
+definirTexto = function ( )
+	local pontuacaoUm = jogadorUm.pontuacao
+	local pontuacaoDois = jogadorDois.pontuacao
+
+	texto.jogador = texto.jogador or display.newText( "Jogador", 50, 0)
+	texto.ia = texto.ia or display.newText( "COM", largura - 50, 0 )
+
+	if ( texto.pontuacaoUm == nil ) then
+		texto.pontuacaoUm = display.newText( pontuacaoUm, 50, 30 )
+		texto.pontuacaoDois = display.newText( pontuacaoDois, largura - 50, 30 )
+	else
+		texto.pontuacaoUm.text = pontuacaoUm
+		texto.pontuacaoDois.text = pontuacaoDois
+	end
+	
+end
+
+-- Define a ação atual do jogador
+textoAcao = function ( acao )
+	if ( texto.acao == nil ) then
+		texto.acao = display.newText( acao, largura / 2, 50 )
+	else
+		texto.acao.text = acao
+	end
+end
+
+--------------------
+-- Jogo
+--------------------
+
+tapListener = function( event )
+
+	if(event.target.ativo) then
+		event.target.fill = { 1, 0, 0, .5 }
+		event.target.ativo = false
+	else
+		event.target.fill = { 0, 0, 1, .5 }
+		event.target.ativo = true
+	end
+end
+
+novoJogo()
+definirTexto()
 local t = tabuleiro:new()
 t:desenharGrafico()
 t:desenharRetangulos()
