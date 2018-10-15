@@ -126,8 +126,6 @@ function tabuleiro:desenharRetangulos( )
 			self.retangulos[i][j].linha = i
 			self.retangulos[i][j].coluna = j
 			self.retangulos[i][j].ocupado = false
-			-- teste remover depois
-			--self.retangulos[i][j]:addEventListener ( "tap", tapListener )
 		end
 
 	end
@@ -141,6 +139,23 @@ function tabuleiro:celulaOcupada( linha, coluna )
 	return self.retangulos[linha][coluna].ocupado
 end
 
+-- Esconde o tabuleiro modificando o alpha dos retângulos
+function tabuleiro:esconder( )
+	for i=1,10 do
+		for j=1,10 do
+			self.retangulos[i][j].alpha = 0
+		end
+	end
+end
+
+-- Mostra o tabuleiro modificando o alpha dos retângulos
+function tabuleiro:mostrar( )
+	for i=1,10 do
+		for j=1,10 do
+			self.retangulos[i][j].alpha = .5
+		end
+	end
+end
 
 -- Posiciona um novo navio no tabuleiro
 function jogador:posicionarNavio( pos, tam ) 
@@ -158,6 +173,13 @@ function jogador:posicionarNavio( pos, tam )
 	else
 		aux = 1
 	end
+
+	for k, v in pairs(novoNavio.posicao) do
+		print(k, v)
+	end
+
+	print( tam )
+	print( "\n" )
 
 	-- percorre o grafico no eixo x muda a cor e remove o listener
 	for i = novoNavio.posicao[1], novoNavio.posicao[3], aux do
@@ -180,6 +202,7 @@ function jogador:posicionarNavio( pos, tam )
 		retangulo.ocupado = true
 		retangulo:removeEventListener( "tap", posicionarNavioListener )
 	end
+
 	
 end
 
@@ -249,7 +272,9 @@ orientacaoNavioListener = function ( event )
 	removerOrientacaoEvento()
 	posicionarEvento()
 	if ( tamanhoNavio == 5 ) then
-		
+		jogadorUm.tabuleiro:esconder()
+		ia.tabuleiro:desenharRetangulos()
+		iaPosicionarNavio()
 	else
 		tamanhoNavio = tamanhoNavio + 1
 	end
@@ -282,11 +307,12 @@ end
 iaPosicionarNavio = function ( )
 	
 	for i = 1, 5 do
-		local ocupado = true
+		local ocupadoX = true
+		local ocupadoY = true
 		local pos = {}
 		
 		if (i ~= 1) then
-			while ( ocupado ) do
+			while ( ocupadoX or ocupadoY ) do
 				pos = {}
 				-- define a orientação do navio 1 == horizontal 2 == vertical
 				local orientacao = math.random( 1, 2 )
@@ -309,19 +335,26 @@ iaPosicionarNavio = function ( )
 				
 				-- preenche a tabela de posições
 				table.insert( pos, posX1 )
-				table.insert( pos, posX2 )
 				table.insert( pos, posY1 )
+				table.insert( pos, posX2 )
 				table.insert( pos, posY2 )
 
-				ocupado = ia.tabuleiro:celulaOcupada( pos )
+				
+				for i = pos[1], pos[3] do
+					ocupadoX = ia.tabuleiro:celulaOcupada( i, pos[2] ) 
+				end
+
+				for i = pos[2], pos[4] do
+					ocupadoY = ia.tabuleiro:celulaOcupada( pos[1], i ) 
+				end
 
 			end
 		else
 			local posX = math.random( 2, 11 )
 			local posY = math.random( 2, 11 )
 			table.insert( pos, posX)
-			table.insert( pos, posX)
 			table.insert( pos, posY)
+			table.insert( pos, posX)
 			table.insert( pos, posY)
 		end
 		
