@@ -19,6 +19,7 @@ local largura = display.contentWidth
 local navioCor = { .6, .4, .4 }
 local tiroCertoCor = { 0, .3, .1 }
 local tiroErradoCor = { .5, .1, .1 }
+local tabuleiroCor = { 0, .15, .60}
 
 local navio = { }
 local tabuleiro = { }
@@ -35,14 +36,16 @@ local posicaoNavio = { }
 local fase
 -- adicionar novo navio
 -- local botaoNovoNavio = display.newImage( "image/not_a_very_good_image.png", display.contentWidth / 2, display.contentHeight * .9 )
-
+local iaPosicionarNavio
 local posicionarNavioListener
 local orientacaoNavioListener
 local tapListener
-local definirTexto
-local textoTopo
 local posicionarEvento
+local removerPosicionarEvento
 local orientacaoEvento
+local removerOrientacaoEvento
+local definirTexto
+local textoTopo 
 local mudarCor
 
 ------------------- 
@@ -112,21 +115,19 @@ end
 
 -- desenha retângulos na tela para serem usados pelos listeners
 function tabuleiro:desenharRetangulos( )
-	local paint = { 0, .15, .60}
-
 	for i=1,10 do
 		
 		self.retangulos[i] = {}
 		for j=1, 10 do
 			self.retangulos[i][j] = display.newRect( ( largura / 20 * ( i + i - 1) ) , (  altura / 20 * ( j + j - 1) + 100) , 
 				largura / 10, altura / 10 )
-			self.retangulos[i][j].fill = paint
+			self.retangulos[i][j].fill = tabuleiroCor
 			self.retangulos[i][j].alpha = .5
 			self.retangulos[i][j].linha = i
 			self.retangulos[i][j].coluna = j
 			self.retangulos[i][j].ocupado = false
 			-- teste remover depois
-			self.retangulos[i][j]:addEventListener ( "tap", tapListener )
+			--self.retangulos[i][j]:addEventListener ( "tap", tapListener )
 		end
 
 	end
@@ -144,22 +145,37 @@ end
 -- Posiciona um novo navio no tabuleiro
 function jogador:posicionarNavio( pos, tam ) 
 	local novoNavio = navio:new()
+	-- incrementar o loop
+	local aux
 	novoNavio.posicao = pos
 	novoNavio.tamanho = tam
 
+
 	table.insert( self.tabuleiro.navios, novoNavio )
+	
+	if (pos[1] > pos[3]) then
+		aux = -1
+	else
+		aux = 1
+	end
 
 	-- percorre o grafico no eixo x muda a cor e remove o listener
-	for i = novoNavio.posicao[1], novoNavio.posicao[2] do
-		local retangulo = self.tabuleiro.retangulos[novoNavio.posicao[3]][i]
+	for i = novoNavio.posicao[1], novoNavio.posicao[3], aux do
+		local retangulo = self.tabuleiro.retangulos[i][novoNavio.posicao[2]]
 		mudarCor ( retangulo, navioCor ) 
 		retangulo.ocupado = true
 		retangulo:removeEventListener( "tap", posicionarNavioListener )
 	end
 
+	if (pos[2] > pos[4]) then
+		aux = -1
+	else
+		aux = 1
+	end
+
 	-- percorre o grafico no eixo y muda a cor e remove o listener
-	for i = novoNavio.posicao[3], novoNavio.posicao[4] do
-		local retangulo =  self.tabuleiro.retangulos[i][novoNavio.posicao[1]]
+	for i = novoNavio.posicao[2], novoNavio.posicao[4], aux do
+		local retangulo =  self.tabuleiro.retangulos[novoNavio.posicao[1]][i]
 		mudarCor ( retangulo, navioCor )
 		retangulo.ocupado = true
 		retangulo:removeEventListener( "tap", posicionarNavioListener )
@@ -201,32 +217,42 @@ end
 --------------------
 
 posicionarNavioListener = function ( event )
-	posicaoNavio.l1 = event.target.linha
-	posicaoNavio.c1 = event.target.coluna
+	posicaoNavio[1] = event.target.linha
+	posicaoNavio[2] = event.target.coluna
 
 	if ( tamanhoNavio == 1 ) then
-		posicaoNavio.l2 = event.target.linha
-		posicaoNavio.c2 = event.target.coluna
-		jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
-		textoFundo( "Navio posicionado" )
+		posicaoNavio[3] = event.target.linha
+		posicaoNavio[4] = event.target.coluna
+		local pos = posicaoNavio
+		jogadorUm:posicionarNavio( pos, tamanhoNavio )
+		textoFundo( "Navio " .. tamanhoNavio.." posicionado" )
 		tamanhoNavio = tamanhoNavio + 1
 	else	
-		removerEventos()
+		removerPosicionarEvento()
 		if ( orientacaoEvento() ) then
 			textoFundo( "Navio não pode ser posicionado aqui" )
 			posicionarEvento()
+		else
+			textoFundo( "Defina a orientação")
 		end
 		
 	end
+
 end
 
 orientacaoNavioListener = function ( event )
-	textoFundo( "Defina a orientação")
-	posicaoNavio.l2 = event.target.linha
-	posicaoNavio.c2 = event.target.coluna
-	jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
-	textoFundo( "Navio posicionado" )
-	tamanhoNavio = tamanhoNavio + 1
+	posicaoNavio[3] = event.target.linha
+	posicaoNavio[4] = event.target.coluna
+	local pos = posicaoNavio
+	jogadorUm:posicionarNavio( pos, tamanhoNavio )
+	textoFundo( "Navio " .. tamanhoNavio.." posicionado" )
+	removerOrientacaoEvento()
+	posicionarEvento()
+	if ( tamanhoNavio == 5 ) then
+		
+	else
+		tamanhoNavio = tamanhoNavio + 1
+	end
 end
 
 
@@ -240,15 +266,68 @@ novoJogo = function()
 	ia = jogador:new( )
 	ia.ia = true
 	tamanhoNavio = 1
-	posicaoNavio.l1 = 0
-	posicaoNavio.l2 = 0
-	posicaoNavio.c1 = 0
-	posicaoNavio.c2 = 0
+	-- 1 == linha 1, 2 == coluna 1, 3 == linha 2, 4 == coluna 2
+	posicaoNavio = {}
 
 	definirTexto()
+	textoTopo( "Posicionar Navios" )
+	jogadorUm.tabuleiro:desenharGrafico()
+	jogadorUm.tabuleiro:desenharRetangulos()
+	posicionarEvento()
 
 end
 
+-- Inicia a ia
+-- preenche o tabuleiro da IA com os navios
+iaPosicionarNavio = function ( )
+	
+	for i = 1, 5 do
+		local ocupado = true
+		local pos = {}
+		
+		if (i ~= 1) then
+			while ( ocupado ) do
+				pos = {}
+				-- define a orientação do navio 1 == horizontal 2 == vertical
+				local orientacao = math.random( 1, 2 )
+				local posX1
+				local posX2
+				local posY1
+				local posY2
+
+				if ( orientacao == 1 ) then
+					posX1 = math.random( 2, 11 - i )
+					posY1 = math.random( 2, 11 )
+					posX2 = posX1 + i - 1
+					posY2 = posY1
+				else
+					posX1 = math.random( 2, 11 )
+					posY1 = math.random( 2, 11 - i )
+					posX2 = posX1
+					posY2 = posY1 + i - 1
+				end
+				
+				-- preenche a tabela de posições
+				table.insert( pos, posX1 )
+				table.insert( pos, posX2 )
+				table.insert( pos, posY1 )
+				table.insert( pos, posY2 )
+
+				ocupado = ia.tabuleiro:celulaOcupada( pos )
+
+			end
+		else
+			local posX = math.random( 2, 11 )
+			local posY = math.random( 2, 11 )
+			table.insert( pos, posX)
+			table.insert( pos, posX)
+			table.insert( pos, posY)
+			table.insert( pos, posY)
+		end
+		
+		ia:posicionarNavio( pos, i) 
+	end
+end
 
 
 -- Adiciona os listeners para o posicionamento dos navios
@@ -257,13 +336,14 @@ posicionarEvento = function ( )
 		for j=1, 10 do
 			if ( jogadorUm.tabuleiro.retangulos[i][j].ocupado == false ) then
 				jogadorUm.tabuleiro.retangulos[i][j]:addEventListener( "tap", posicionarNavioListener )
+				mudarCor( jogadorUm.tabuleiro.retangulos[i][j], tabuleiroCor)
 			end
 		end
 	end
 end
 
--- Remove todos os event listeners do tabuleiro
-removerEventos = function ( )
+-- Remove todos os event de posicionar do tabuleiro
+removerPosicionarEvento = function ( )
 	for i=1, 10 do
 		for j=1, 10 do
 			jogadorUm.tabuleiro.retangulos[i][j]:removeEventListener( "tap", posicionarNavioListener )
@@ -276,21 +356,22 @@ end
 orientacaoEvento = function ( )
 	local valido = true
 	local voltar = true
-	local linhaNeg = posicaoNavio.l1 - tamanhoNavio
-	local linhaPos = posicaoNavio.l1 + tamanhoNavio
-	local colunaNeg = posicaoNavio.c1 - tamanhoNavio
-	local colunaPos = posicaoNavio.c1 + tamanhoNavio
+	local linhaNeg = posicaoNavio[1] - tamanhoNavio + 1
+	local linhaPos = posicaoNavio[1] + tamanhoNavio - 1
+	local colunaNeg = posicaoNavio[2] - tamanhoNavio + 1
+	local colunaPos = posicaoNavio[2] + tamanhoNavio - 1
 
 	if ( linhaNeg > 0 ) then
-		for i = posicaoNavio.l1, linhaNeg, -1 do
-			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio.c1 ) ) then
+		for i = posicaoNavio[1], linhaNeg, -1 do
+			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio[2]) ) then
 				valido = false
 				break
 			end
 		end
 
 		if ( valido ) then
-			jogadorUm.tabuleiro.retangulos[linhaNeg][posicaoNavio.c1]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[linhaNeg][posicaoNavio[2]]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[linhaNeg][posicaoNavio[2]].fill = tiroCertoCor
 			voltar = false
 		end
 	end
@@ -299,15 +380,16 @@ orientacaoEvento = function ( )
 
 	if ( linhaPos < 11 ) then
 		valido = true
-		for i = posicaoNavio.l1, linhaPos do
-			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio.c1 ) ) then
+		for i = posicaoNavio[1], linhaPos do
+			if ( jogadorUm.tabuleiro:celulaOcupada( i, posicaoNavio[2] ) ) then
 				valido = false
 				break
 			end
 		end
 
 		if ( valido ) then
-			jogadorUm.tabuleiro.retangulos[linhaPos][posicaoNavio.c1]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[linhaPos][posicaoNavio[2]]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[linhaPos][posicaoNavio[2]].fill = tiroCertoCor
 			voltar = false
 		end
 	end
@@ -316,15 +398,16 @@ orientacaoEvento = function ( )
 
 	if ( colunaNeg > 0 ) then
 		valido = true
-		for i = posicaoNavio.c1, colunaNeg, -1 do
-			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio.l1, i ) ) then
+		for i = posicaoNavio[2], colunaNeg, -1 do
+			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio[1], i ) ) then
 				valido = false
 				break
 			end
 		end
 
 		if ( valido ) then
-			jogadorUm.tabuleiro.retangulos[posicaoNavio.l1][colunaNeg]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[posicaoNavio[1]][colunaNeg]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[posicaoNavio[1]][colunaNeg].fill = tiroCertoCor
 			voltar = false
 		end
 	end
@@ -334,20 +417,30 @@ orientacaoEvento = function ( )
 
 	if ( colunaPos < 11 ) then
 		valido = true
-		for i = posicaoNavio.c1, colunaPos do
-			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio.l1, i ) ) then
+		for i = posicaoNavio[2], colunaPos do
+			if ( jogadorUm.tabuleiro:celulaOcupada( posicaoNavio[1], i ) ) then
 				valido = false
 				break
 			end
 		end
 
 		if ( valido ) then
-			jogadorUm.tabuleiro.retangulos[posicaoNavio.l1][colunaNeg]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[posicaoNavio[1]][colunaPos]:addEventListener( "tap", orientacaoNavioListener )
+			jogadorUm.tabuleiro.retangulos[posicaoNavio[1]][colunaPos].fill = tiroCertoCor
 			voltar = false
 		end
 	end
 
 	return voltar
+end
+
+-- Remove o evento de orientação
+removerOrientacaoEvento = function ( )
+	for i=1, 10 do
+		for j=1, 10 do
+			jogadorUm.tabuleiro.retangulos[i][j]:removeEventListener( "tap", orientacaoNavioListener )
+		end
+	end
 end
 
 -- Define o texto no topo da tela com o atual estado do jogo
@@ -414,8 +507,5 @@ tapListener = function( event )
 end
 
 novoJogo()
-definirTexto()
-local t = tabuleiro:new()
-t:desenharGrafico()
-t:desenharRetangulos()
+
 textoFundo('teste')
