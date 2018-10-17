@@ -6,7 +6,7 @@
 
 -- Your code here
 
---math.randomseed( os.time())
+math.randomseed( os.time())
 
 
 -------------------
