@@ -6,7 +6,7 @@
 
 -- Your code here
 
-math.randomseed( os.time())
+--math.randomseed( os.time())
 
 
 -------------------
@@ -188,7 +188,10 @@ function jogador:posicionarNavio( pos, tam )
 	local novoNavio = navio:new()
 	-- incrementar o loop
 	local aux
-	novoNavio.posicao = pos
+
+	for i=1,4 do
+		novoNavio.posicao[i] = pos[i]
+	end
 	novoNavio.tamanho = tam
 
 
@@ -230,8 +233,6 @@ end
 function jogador:atirar( jogador2, linha, coluna)
 	local acertou = false
 	local pontuacao = self.pontuacao
-
-	print( jogador2.tabuleiro.retangulos[linha][coluna] )
 
 	for i = 1, #jogador2.tabuleiro.navios do
 		-- checa se o valor x e y estão entre as posições x1, x2 e y1, y2, respectivamente 
@@ -278,8 +279,7 @@ posicionarNavioListener = function ( event )
 	if ( tamanhoNavio == 1 ) then
 		posicaoNavio[3] = event.target.linha
 		posicaoNavio[4] = event.target.coluna
-		local pos = posicaoNavio
-		jogadorUm:posicionarNavio( pos, tamanhoNavio )
+		jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
 		textoFundo( "Navio " .. tamanhoNavio.." posicionado" )
 		tamanhoNavio = tamanhoNavio + 1
 	else	
@@ -298,8 +298,7 @@ end
 orientacaoNavioListener = function ( event )
 	posicaoNavio[3] = event.target.linha
 	posicaoNavio[4] = event.target.coluna
-	local pos = posicaoNavio
-	jogadorUm:posicionarNavio( pos, tamanhoNavio )
+	jogadorUm:posicionarNavio( posicaoNavio, tamanhoNavio )
 	textoFundo( "Navio " .. tamanhoNavio.." posicionado" )
 	removerOrientacaoEvento()
 	posicionarEvento()
@@ -339,9 +338,10 @@ atirarListener = function ( event )
 		textoFundo( "Acertou" )
 		definirTexto()
 	elseif ( not acertou ) then
+		textoFundo( "Errou")
 		ia.tabuleiro:esconder()
 		jogadorUm.tabuleiro:mostrar()
-		iaAtirar( ia, jogadorUm )
+		iaAtirar( )
 	end
 end
 
@@ -368,6 +368,15 @@ end
 
 -- Fase de batalha
 batalha = function()
+
+	--teste
+	for i=1,5 do
+		for k,v in pairs(jogadorUm.tabuleiro.navios[i].posicao) do
+			print(k,v)
+		end
+	end
+	
+
 	atirarEvento()
 	ia.tabuleiro:esconder()
 	jogadorUm.tabuleiro:mostrar()
@@ -394,28 +403,28 @@ iaPosicionarNavio = function ( )
 				pos = {}
 				-- define a orientação do navio 1 == horizontal 2 == vertical
 				local orientacao = math.random( 1, 2 )
-				local posX1
-				local posX2
-				local posY1
-				local posY2
+				local linha1
+				local linha2
+				local coluna1
+				local coluna2
 
 				if ( orientacao == 1 ) then
-					posX1 = math.random( 1, 10 - i )
-					posY1 = math.random( 1, 10 )
-					posX2 = posX1 + i - 1
-					posY2 = posY1
+					linha1 = math.random( 1, 10 - i )
+					coluna1 = math.random( 1, 10 )
+					linha2 = linha1 + i - 1
+					coluna2 = coluna1
 				else
-					posX1 = math.random( 1, 10 )
-					posY1 = math.random( 1, 10 - i )
-					posX2 = posX1
-					posY2 = posY1 + i - 1
+					linha1 = math.random( 1, 10 )
+					coluna1 = math.random( 1, 10 - i )
+					linha2 = linha1
+					coluna2 = coluna1 + i - 1
 				end
 				
 				-- preenche a tabela de posições
-				table.insert( pos, posX1 )
-				table.insert( pos, posY1 )
-				table.insert( pos, posX2 )
-				table.insert( pos, posY2 )
+				table.insert( pos, linha1 )
+				table.insert( pos, coluna1 )
+				table.insert( pos, linha2 )
+				table.insert( pos, coluna2 )
 
 				
 				for i = pos[1], pos[3] do
@@ -428,30 +437,33 @@ iaPosicionarNavio = function ( )
 
 			end
 		else
-			local posX = math.random( 1, 10 )
-			local posY = math.random( 1, 10 )
-			table.insert( pos, posX)
-			table.insert( pos, posY)
-			table.insert( pos, posX)
-			table.insert( pos, posY)
+			local linha = math.random( 1, 10 )
+			local coluna = math.random( 1, 10 )
+			table.insert( pos, linha)
+			table.insert( pos, coluna)
+			table.insert( pos, linha)
+			table.insert( pos, coluna)
 		end
 		
 		ia:posicionarNavio( pos, i) 
 	end
 end
 
-iaAtirar = function ( jogador1, jogador2 )
-	local posX
-	local posY
+iaAtirar = function ( )
+	local linha
+	local coluna
+	local acertou
 
 	repeat 
-		posX = math.random( 1, 10 )
-		posY = math.random( 1, 10 )
-	until ( not jogador2.tabuleiro.retangulos[posX][posY].atingido )
+		linha = math.random( 1, 10 )
+		coluna = math.random( 1, 10 )
+	until ( not jogadorUm.tabuleiro.retangulos[linha][coluna].atingido )
 
-	if ( jogador1:atirar( jogador2, posX, poxY ) and not venceu( jogador1 ) ) then
+	acertou = ia:atirar( jogadorUm, linha, coluna )
+
+	if ( acertou and not venceu( ia ) ) then
 		definirTexto()
-		iaAtirar( jogador1, jogador2 )
+		iaAtirar()
 	end
 
 end
